@@ -1,0 +1,9 @@
+{
+  "holdings": [
+    {"symbol": "RELIANCE", "quantity": 10, "avg_price": 2450, "buy_date": "2025-01-15"},
+    {"symbol": "TCS", "quantity": 5, "avg_price": 3800, "buy_date": "2025-03-20"},
+    {"symbol": "HDFCBANK", "quantity": 20, "avg_price": 1600, "buy_date": "2025-02-10"}
+  ],
+  "cash": 50000,
+  "updated": "2026-05-21"
+}

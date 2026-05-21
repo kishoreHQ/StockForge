@@ -1,0 +1,26 @@
+{
+  "fundamental": {
+    "min_roce": 15,
+    "min_roe": 12,
+    "max_debt_to_equity": 1.0,
+    "max_pe": 50,
+    "min_profit_margin": 5,
+    "min_score": 60
+  },
+  "vcp": {
+    "min_uptrend_pct": 25,
+    "max_distance_from_high_pct": 15,
+    "min_volume_dryup_ratio": 0.7,
+    "max_rsi": 75
+  },
+  "breakout": {
+    "max_distance_from_20d_high_pct": 5,
+    "min_volume_ratio": 1.2,
+    "min_above_ma_count": 2
+  },
+  "daily_recommendation": {
+    "min_confidence": 15,
+    "max_recommendations": 5,
+    "universe": "nifty50"
+  }
+}
