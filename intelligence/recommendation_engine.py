@@ -9,6 +9,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from data.market_data import get_quote, get_history
 from analysis.technical import full_technical_analysis
+from analysis.alpha_zoo import score_all_alphas
 from analysis.fundamental import score_fundamentals
 from analysis.valuation import dcf_estimate, pe_pb_analysis
 from data.news import get_market_news_summary, analyze_sentiment
@@ -18,6 +19,7 @@ from intelligence.scenarios import analyze_scenario, format_scenario_report
 from intelligence.concalls import fetch_concalls, generate_vp_scorecard
 from intelligence.breadth import analyze_breadth
 from risk import generate_risk_report
+from risk.confidence_scorer import StockForgeConfidenceScorer
 import json
 from datetime import datetime
 
@@ -56,6 +58,22 @@ def generate_recommendation(
     tech = full_technical_analysis(symbol)
     rec["technical"] = tech
 
+    # 2b. Alpha Zoo — 10 quant factors
+    try:
+        hist = get_history(symbol, period="6mo")
+        if hist is not None and not hist.empty:
+            price_data = {
+                "close": hist["Close"].dropna().tolist() if "Close" in hist.columns else [],
+                "high": hist["High"].dropna().tolist() if "High" in hist.columns else [],
+                "low": hist["Low"].dropna().tolist() if "Low" in hist.columns else [],
+                "volume": hist["Volume"].dropna().tolist() if "Volume" in hist.columns else [],
+            }
+            if len(price_data["close"]) >= 20:
+                alpha_result = score_all_alphas(price_data)
+                rec["alpha_zoo"] = alpha_result
+    except Exception:
+        pass
+
     # 3. Fundamental scoring
     fund = score_fundamentals(symbol)
     rec["fundamental"] = fund
@@ -89,6 +107,9 @@ def generate_recommendation(
         "news_sentiment": "",
         "company_internals": "",
         "technical": "",
+        "alpha_zoo": "",
+        "alpha_zoo_best": "",
+        "alpha_zoo_worst": "",
         "fundamental": "",
         "valuation": "",
         "scenario": "",
@@ -147,6 +168,33 @@ def generate_recommendation(
             hypothesis["technical"] = f"Technical concerns: {', '.join(bearish_signals[:2])}"
         else:
             hypothesis["technical"] = "Mixed signals — neutral technical setup"
+
+    # ── Alpha Zoo Hypothesis ──
+    alpha = rec.get("alpha_zoo", {})
+    if alpha and "aggregate" in alpha:
+        agg = alpha["aggregate"]
+        if agg >= 70:
+            confidence += 15
+            hypothesis["alpha_zoo"] = f"Strong quant signal: {agg:.0f}/100 ({alpha['signal']})"
+        elif agg >= 60:
+            confidence += 8
+            hypothesis["alpha_zoo"] = f"Positive quant bias: {agg:.0f}/100 ({alpha['signal']})"
+        elif agg <= 30:
+            confidence -= 10
+            hypothesis["alpha_zoo"] = f"Bearish quant signal: {agg:.0f}/100 ({alpha['signal']})"
+        elif agg <= 40:
+            confidence -= 5
+            hypothesis["alpha_zoo"] = f"Cautionary quant signal: {agg:.0f}/100 ({alpha['signal']})"
+        else:
+            hypothesis["alpha_zoo"] = f"Neutral quant: {agg:.0f}/100"
+
+        # Add best/worst factor insights
+        factors = alpha.get("factors", {})
+        if factors:
+            best_factor = max(factors.items(), key=lambda x: x[1]["score"])
+            worst_factor = min(factors.items(), key=lambda x: x[1]["score"])
+            hypothesis["alpha_zoo_best"] = f"Best factor: {best_factor[0]} ({best_factor[1]['score']:.0f}/100)"
+            hypothesis["alpha_zoo_worst"] = f"Worst factor: {worst_factor[0]} ({worst_factor[1]['score']:.0f}/100)"
 
     # ── Fundamental Hypothesis ──
     score = _safe_get(fund, "score", default=0)
@@ -315,6 +363,14 @@ def format_stock_report(rec: dict) -> str:
         if hyp.get("technical"):
             lines.append(f"\n  📊 TECHNICAL:")
             lines.append(f"    {hyp['technical']}")
+
+        if hyp.get("alpha_zoo"):
+            lines.append(f"\n  🤖 ALPHA ZOO (Quant Factors):")
+            lines.append(f"    {hyp['alpha_zoo']}")
+        if hyp.get("alpha_zoo_best"):
+            lines.append(f"    ✅ {hyp['alpha_zoo_best']}")
+        if hyp.get("alpha_zoo_worst"):
+            lines.append(f"    ❌ {hyp['alpha_zoo_worst']}")
 
         if hyp.get("fundamental"):
             lines.append(f"\n  📋 FUNDAMENTAL:")
