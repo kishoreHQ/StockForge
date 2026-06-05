@@ -6,21 +6,36 @@ __pycache__/
 *.egg-info/
 dist/
 build/
+.pytest_cache/
 
 # Virtual env
 venv/
+.venv/
 .env
 
 # Output files (keep generated reports out of git)
 output/
+output/**
 
-# IDE
+# Local config (per-user)
+config/secrets.json
+config/portfolio.json
+
+# Editor / IDE
 .vscode/
 .idea/
+*.swp
+*~
 
 # OS
 .DS_Store
 Thumbs.db
 
-# Hermes-specific (don't push credentials)
-config/secrets.json
+# Tooling caches
+.codegraph/
+.ruff_cache/
+.mypy_cache/
+
+# Logs
+*.log
+output/cron.log
